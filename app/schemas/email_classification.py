@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from app.enums.email_priority import EmailPriority
 from app.enums.review_status import ReviewStatus
 from app.enums.mail_provider import MailProvider
@@ -51,15 +51,19 @@ class EmailClassificationResult(BaseModel):
     interview_date: Optional[datetime] = None
     reason:str = Field(..., min_length=1, max_length=1000)
     
-    @feld_validator('secondary_categories')
-    def validate_secondary_categories(cls, values:list[EmailCategory]) -> list[EmailCategory]:
-        unique_values = list(set(values))
-        for value in values:
-            if value not in unique_values:
-                unique_values.append(value)
-                
-        return unique_values
+    @model_validator(mode="after")
+    def validate_secondary_categories(self):
+        seen = set()
+        filtered_categories = []
+        for category in self.secondary_categories:
+            if category != self.primary_category and category not in seen:
+                seen.add(category)
+                filtered_categories.append(category)
 
+        self.secondary_categories = filtered_categories[:2]  # Limit to 2 unique secondary categories
+        return self
+    
+    
 class EmailClassificationResponse(BaseModel):
     """Response model for email classification."""
     input: EmailClassificationRequest

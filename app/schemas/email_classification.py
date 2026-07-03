@@ -1,12 +1,15 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 from app.enums.email_priority import EmailPriority
 from app.enums.review_status import ReviewStatus
 from app.enums.mail_provider import MailProvider
 from app.enums.email_category import EmailCategory
 from app.enums.thread_status import ThreadStatus
+
+from app.enums.classification_error_source import ClassificationErrorSource
+from app.enums.classification_status import ClassificationStatus
 
 class EmailThreadContext(BaseModel):
     provider_thread_id: Optional[str] = None
@@ -36,9 +39,11 @@ class EmailClassificationResult(BaseModel):
     """Result model for email classification."""
     primary_category: EmailCategory
     secondary_categories: list[EmailCategory] = Field(default_factory=list, max_length=2)
+    
     thread_status: ThreadStatus
     review_status: ReviewStatus
     priority: EmailPriority
+    classification_status: ClassificationStatus = ClassificationStatus.COMPLETED
     
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score of the classification.")
     
@@ -50,6 +55,9 @@ class EmailClassificationResult(BaseModel):
     
     interview_date: Optional[datetime] = None
     reason:str = Field(..., min_length=1, max_length=1000)
+    
+    error_source: Optional[ClassificationErrorSource] = None
+    error_message: Optional[str] = Field(default=None, max_length=1000)
     
     @model_validator(mode="after")
     def validate_secondary_categories(self):

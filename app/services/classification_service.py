@@ -7,9 +7,17 @@ from app.schemas.email_classification import (
     EmailClassificationResult,
 )
 
+from app.enums.classification_error_source import ClassificationErrorSource
+from app.enums.classification_status import ClassificationStatus
 
 class ClassificationService:
     def classify_preview(
+        self,
+        payload: EmailClassificationRequest,
+    ) -> EmailClassificationResult:
+        return self.classify_with_fallback_rules(payload)
+   
+    def classify_with_fallback_rules(
         self,
         payload: EmailClassificationRequest,
     ) -> EmailClassificationResult:
@@ -18,7 +26,6 @@ class ClassificationService:
         combined_text = f"{subject} {body}"
 
         thread_context = payload.thread_context
-        user_has_replied = thread_context.user_has_replied if thread_context else False
 
         company_name = (
             thread_context.last_known_company_name
@@ -31,42 +38,7 @@ class ClassificationService:
             else None
         )
 
-        if "confirmed" in combined_text and "interview" in combined_text:
-            return EmailClassificationResult(
-                primary_category=EmailCategory.INTERVIEW_CONFIRMATION,
-                secondary_categories=[],
-                thread_status=ThreadStatus.INTERVIEW_CONFIRMED,
-                review_status=ReviewStatus.AUTO_CLASSIFIED,
-                priority=EmailPriority.HIGH,
-                confidence=0.88,
-                action_needed=False,
-                should_surface=True,
-                company_name=company_name,
-                role_title=role_title,
-                reason="Fake classifier matched interview confirmation wording.",
-            )
-
-        if "interview" in combined_text or "schedule a call" in combined_text:
-            secondary_categories: list[EmailCategory] = []
-
-            if user_has_replied:
-                secondary_categories.append(EmailCategory.RECRUITER_FOLLOW_UP)
-
-            return EmailClassificationResult(
-                primary_category=EmailCategory.JOB_INTERVIEW,
-                secondary_categories=secondary_categories,
-                thread_status=ThreadStatus.INTERVIEW_SCHEDULING,
-                review_status=ReviewStatus.AUTO_CLASSIFIED,
-                priority=EmailPriority.HIGH,
-                confidence=0.88,
-                action_needed=True,
-                should_surface=True,
-                company_name=company_name,
-                role_title=role_title,
-                reason="Fake classifier matched interview or scheduling-related wording.",
-            )
-
-        if "unfortunately" in combined_text or "not moving forward" in combined_text:
+        if self._looks_like_rejection(combined_text):
             secondary_categories: list[EmailCategory] = []
 
             if "application" in combined_text:
@@ -78,67 +50,12 @@ class ClassificationService:
                 thread_status=ThreadStatus.REJECTED,
                 review_status=ReviewStatus.AUTO_CLASSIFIED,
                 priority=EmailPriority.MEDIUM,
-                confidence=0.9,
+                confidence=0.82,
                 action_needed=False,
                 should_surface=True,
                 company_name=company_name,
                 role_title=role_title,
-                reason="Fake classifier matched rejection-related wording.",
-            )
-
-        if "assessment" in combined_text or "coding challenge" in combined_text:
-            secondary_categories: list[EmailCategory] = []
-
-            if user_has_replied:
-                secondary_categories.append(EmailCategory.RECRUITER_FOLLOW_UP)
-
-            return EmailClassificationResult(
-                primary_category=EmailCategory.ASSESSMENT,
-                secondary_categories=secondary_categories,
-                thread_status=ThreadStatus.ASSESSMENT_STAGE,
-                review_status=ReviewStatus.AUTO_CLASSIFIED,
-                priority=EmailPriority.HIGH,
-                confidence=0.86,
-                action_needed=True,
-                should_surface=True,
-                company_name=company_name,
-                role_title=role_title,
-                reason="Fake classifier matched assessment-related wording.",
-            )
-
-        if user_has_replied:
-            secondary_categories: list[EmailCategory] = []
-
-            if "update" in combined_text or "next step" in combined_text:
-                secondary_categories.append(EmailCategory.APPLICATION_UPDATE)
-
-            return EmailClassificationResult(
-                primary_category=EmailCategory.RECRUITER_FOLLOW_UP,
-                secondary_categories=secondary_categories,
-                thread_status=ThreadStatus.WAITING_FOR_USER_REPLY,
-                review_status=ReviewStatus.AUTO_CLASSIFIED,
-                priority=EmailPriority.HIGH,
-                confidence=0.78,
-                action_needed=True,
-                should_surface=True,
-                company_name=company_name,
-                role_title=role_title,
-                reason="Fake classifier treated this as important because the user previously replied in this thread.",
-            )
-
-        if "recruiter" in combined_text or "opportunity" in combined_text:
-            return EmailClassificationResult(
-                primary_category=EmailCategory.INITIAL_RECRUITER_OUTREACH,
-                secondary_categories=[],
-                thread_status=ThreadStatus.NEW_OUTREACH,
-                review_status=ReviewStatus.AUTO_CLASSIFIED,
-                priority=EmailPriority.LOW,
-                confidence=0.72,
-                action_needed=False,
-                should_surface=False,
-                company_name=company_name,
-                role_title=role_title,
-                reason="Fake classifier matched initial recruiter outreach wording, but it is low priority.",
+                reason="Fallback rule matched a strong rejection phrase.",
             )
 
         return EmailClassificationResult(
@@ -147,12 +64,67 @@ class ClassificationService:
             thread_status=ThreadStatus.NEEDS_REVIEW,
             review_status=ReviewStatus.NEEDS_REVIEW,
             priority=EmailPriority.MEDIUM,
-            confidence=0.4,
+            confidence=0.3,
             action_needed=True,
             should_surface=True,
             company_name=company_name,
             role_title=role_title,
-            reason="Fake classifier could not confidently detect the email intent.",
+            reason="Fallback rules could not safely classify this email, so it requires manual review.",
+        )
+
+    def _looks_like_rejection(self, text: str) -> bool:
+        rejection_phrases = [
+            "not moving forward",
+            "not move forward",
+            "unable to move forward",
+            "will not be moving forward",
+            "will not be proceeding",
+            "decided not to proceed",
+            "not selected",
+            "not chosen",
+            "pursue other candidates",
+            "pursuing other candidates",
+            "unfortunately",
+            "we regret to inform",
+            "after careful consideration",
+        ]
+
+        return any(phrase in text for phrase in rejection_phrases)
+
+    def build_api_error_result(
+        self,
+        payload: EmailClassificationRequest,
+        error_source: ClassificationErrorSource,
+        error_message: str,
+    ) -> EmailClassificationResult:
+        thread_context = payload.thread_context
+
+        company_name = (
+            thread_context.last_known_company_name
+            if thread_context
+            else None
+        )
+        role_title = (
+            thread_context.last_known_role_title
+            if thread_context
+            else None
+        )
+
+        return EmailClassificationResult(
+            primary_category=EmailCategory.UNRECOGNIZED,
+            secondary_categories=[],
+            thread_status=ThreadStatus.NEEDS_REVIEW,
+            review_status=ReviewStatus.NEEDS_REVIEW,
+            priority=EmailPriority.HIGH,
+            classification_status=ClassificationStatus.FAILED,
+            confidence=0.0,
+            action_needed=True,
+            should_surface=True,
+            company_name=company_name,
+            role_title=role_title,
+            error_source=error_source,
+            error_message=error_message,
+            reason="Classification failed because the AI provider returned an error.",
         )
 
 

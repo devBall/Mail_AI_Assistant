@@ -9,11 +9,11 @@ def create_app() -> FastAPI:
     setup_logging()
     settings = get_settings()
     app = FastAPI(
-        title=settings.APP_NAME,
+        title=settings.app_name,
         version="0.1.0",
-        debug=settings.DEBUG,
+        debug=settings.debug,
     )
-    app.include_router(api_router, prefix=settings.API_PREFIX)
+    app.include_router(api_router, prefix=settings.api_prefix)
     return app
 
 app = create_app()

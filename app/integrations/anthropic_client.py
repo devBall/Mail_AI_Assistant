@@ -18,28 +18,33 @@ class AnthropicClassificationClient:
     def __init__(self) -> None:
         settings = get_settings()
 
-        if not settings.ANTHROPIC_API_KEY:
-            raise AnthropicClassificationError("ANTHROPIC_API_KEY is missing.")
+        if not settings.anthropic_api_key:
+            raise AnthropicClassificationError("anthropic_api_key is missing.")
 
         self.settings = settings
-        self.client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        self.client = Anthropic(api_key=settings.anthropic_api_key)
 
     def classify_email(
         self,
         payload: EmailClassificationRequest,
     ) -> EmailClassificationResult:
-        response = self.client.messages.create(
-            model=self.settings.ANTHROPIC_API_KEY,
-            max_tokens=self.settings.ANTHROPIC_MAX_TOKENS,
-            temperature=0,
-            system=self._build_system_prompt(),
-            messages=[
-                {
-                    "role": "user",
-                    "content": self._build_user_prompt(payload),
-                }
-            ],
-        )
+        try:
+            response = self.client.messages.create(
+                model=self.settings.anthropic_model,
+                max_tokens=self.settings.anthropic_max_tokens,
+                temperature=0,
+                system=self._build_system_prompt(),
+                messages=[
+                    {
+                        "role": "user",
+                        "content": self._build_user_prompt(payload),
+                    }
+                ],
+            )
+        except Exception as exc:
+            raise AnthropicClassificationError(
+                f"Anthropic request failed: {exc}"
+            ) from exc
 
         text = self._extract_text_response(response)
 

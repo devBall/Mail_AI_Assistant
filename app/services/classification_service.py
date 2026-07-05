@@ -22,7 +22,7 @@ class ClassificationService:
     ) -> EmailClassificationResult:
         settings = get_settings()
 
-        if settings.AI_CLASSIFIER_MODE == "anthropic":
+        if settings.ai_classifier_mode == "anthropic":
             return self.classify_with_anthropic(payload)
 
         return self.classify_with_fallback_rules(payload)

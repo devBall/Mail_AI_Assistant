@@ -1,3 +1,8 @@
+from dataclasses import dataclass
+from typing import Literal
+
+import pytest
+
 from app.enums.email_category import EmailCategory
 from app.enums.email_priority import EmailPriority
 from app.enums.mail_provider import MailProvider
@@ -7,8 +12,22 @@ from app.schemas.email_classification import (
     EmailClassificationRequest,
     EmailThreadContext,
 )
+
+from app.services import classification_service as classification_service_module
 from app.services.classification_service import ClassificationService
 
+@dataclass
+class FakeSettings:
+    ai_classifier_mode: Literal["fallback", "anthropic"] = "fallback"
+    
+@pytest.fixture(autouse=True)
+def force_fallback_mode(monkeypatch):
+    monkeypatch.setattr(
+        classification_service_module,
+        "get_settings",
+        lambda: FakeSettings(ai_classifier_mode="fallback"),
+    )
+        
 
 def make_request(
     subject: str,

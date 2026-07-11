@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
     api_prefix: str = '/api/v1'
+    
+    database_url: str
 
     ai_classifier_mode: Literal["fallback", "anthropic"] = "fallback"
     

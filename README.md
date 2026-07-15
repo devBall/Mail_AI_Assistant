@@ -53,7 +53,7 @@ python -m venv .venv
 On Windows:
 
 ```bash
-.venv\Scripts\activate
+'.venv\Scripts\activate'
 ```
 
 On macOS or Linux:

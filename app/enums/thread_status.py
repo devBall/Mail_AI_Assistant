@@ -2,6 +2,7 @@ from enum import StrEnum
 
 class ThreadStatus(StrEnum):
     """Enum for thread statuses."""
+    UNCLASSIFIED = "UNCLASSIFIED"
     NEW_OUTREACH = "NEW_OUTREACH"
     WAITING_FOR_USER_REPLY = "WAITING_FOR_USER_REPLY"
     WAITING_FOR_RECRUITER_REPLY = "WAITING_FOR_RECRUITER_REPLY"

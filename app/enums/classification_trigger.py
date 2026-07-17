@@ -1,0 +1,8 @@
+from enum import StrEnum
+
+
+class ClassificationTrigger(StrEnum):
+    EMAIL_INGESTION = "EMAIL_INGESTION"
+    RETRY = "RETRY"
+    MANUAL_RECLASSIFICATION = "MANUAL_RECLASSIFICATION"
+    BACKFILL = "BACKFILL"

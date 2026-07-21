@@ -23,19 +23,6 @@ if TYPE_CHECKING:
     from app.models.email import Email
     from app.models.email_thread import EmailThread
     from app.models.user import User
-    
-    
-email_threads: Mapped[list[EmailThread]] = relationship(
-    back_populates="mail_account",
-    cascade="all, delete-orphan",
-    passive_deletes=True,
-)
-
-emails: Mapped[list[Email]] = relationship(
-    back_populates="mail_account",
-    cascade="all, delete-orphan",
-    passive_deletes=True,
-)
 
 
 class MailAccount(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -130,4 +117,16 @@ class MailAccount(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     user: Mapped[User] = relationship(
         back_populates="mail_accounts",
+    )
+
+    email_threads: Mapped[list[EmailThread]] = relationship(
+        back_populates="mail_account",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    emails: Mapped[list[Email]] = relationship(
+        back_populates="mail_account",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

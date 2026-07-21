@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from sqlalchemy import (
@@ -26,20 +26,6 @@ if TYPE_CHECKING:
     from app.models.email_classification import EmailClassification
     from app.models.email_thread import EmailThread
     from app.models.mail_account import MailAccount
-    
-    
-classification: Mapped[EmailClassification | None] = relationship(
-    back_populates="email",
-    cascade="all, delete-orphan",
-    passive_deletes=True,
-    uselist=False,
-)
-
-classification_attempts: Mapped[list[ClassificationAttempt]] = relationship(
-    back_populates="email",
-    cascade="all, delete-orphan",
-    passive_deletes=True,
-)
 
 
 class Email(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -251,4 +237,17 @@ class Email(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     email_thread: Mapped[EmailThread | None] = relationship(
         back_populates="emails",
+    )
+
+    classification: Mapped[EmailClassification | None] = relationship(
+        back_populates="email",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
+
+    classification_attempts: Mapped[list[ClassificationAttempt]] = relationship(
+        back_populates="email",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

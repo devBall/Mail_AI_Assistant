@@ -121,8 +121,7 @@ class ClassificationPersistenceService:
                 role_title=result.role_title,
                 action_needed=result.action_needed,
                 should_surface=result.should_surface,
-                interview_at=result.interview_at,
-                deadline_at=result.deadline_at,
+                interview_at=result.interview_date,
                 reason=result.reason,
                 model_name=command.model_name,
                 prompt_version=command.prompt_version,
@@ -195,8 +194,7 @@ class ClassificationPersistenceService:
         current.action_needed = result.action_needed
         current.should_surface = result.should_surface
 
-        current.interview_at = result.interview_at
-        current.deadline_at = result.deadline_at
+        current.interview_at = result.interview_date
 
         current.reason = result.reason
         current.model_name = command.model_name

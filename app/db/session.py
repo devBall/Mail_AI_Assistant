@@ -1,5 +1,5 @@
-from collections.abc import Generator
-
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,6 +17,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
+    expire_on_commit=False,
     bind=engine,
 )
 
@@ -26,5 +27,17 @@ def get_db() -> Generator[Session, None, None]:
 
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+        
+@contextmanager
+def get_db_context() -> Iterator[Session]:
+    db = SessionLocal()
+    try:
+        with db.begin():
+            yield db
     finally:
         db.close()
